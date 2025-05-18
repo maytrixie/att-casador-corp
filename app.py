@@ -12,6 +12,7 @@ from decimal import Decimal
 from random import randint, choice
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+<<<<<<< HEAD
 import os
 from dotenv import load_dotenv
 
@@ -19,6 +20,11 @@ load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Use environment variable for secret key
+=======
+
+app = Flask(__name__)
+app.secret_key = 'your-secret-key-here'  # Required for session management
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -37,7 +43,11 @@ def load_user(user_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+<<<<<<< HEAD
             cursor.execute("SELECT * FROM user WHERE user_id = %s", (user_id,))
+=======
+            cursor.execute("SELECT * FROM User WHERE user_id = %s", (user_id,))
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
             user_data = cursor.fetchone()
             if user_data:
                 return User(user_data['user_id'], user_data['username'], user_data['role'])
@@ -47,11 +57,18 @@ def load_user(user_id):
 
 # Database connection configuration
 db_config = {
+<<<<<<< HEAD
     'host': os.getenv('DB_HOST', 'localhost'),
     'user': os.getenv('DB_USER', 'root'),
     'password': os.getenv('DB_PASSWORD', ''),
     'db': os.getenv('DB_NAME', 'att_db'),
     'port': int(os.getenv('DB_PORT', 3306)),
+=======
+    'host': 'localhost',
+    'user': 'root',
+    'password': '',  # Make sure this matches your MySQL password
+    'db': 'att_db',  # Make sure this database exists
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor
 }
@@ -82,7 +99,11 @@ def create_tables():
                 FOREIGN KEY (location_id) REFERENCES Location(location_id)
             )''')
             # User table
+<<<<<<< HEAD
             cursor.execute('''CREATE TABLE IF NOT EXISTS user (
+=======
+            cursor.execute('''CREATE TABLE IF NOT EXISTS User (
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
                 user_id INT AUTO_INCREMENT PRIMARY KEY,
                 full_name VARCHAR(50),
                 username VARCHAR(10),
@@ -187,7 +208,11 @@ def create_tables():
                 user_id INT,
                 action VARCHAR(100),
                 time_stamp DATETIME,
+<<<<<<< HEAD
                 FOREIGN KEY (user_id) REFERENCES user(user_id)
+=======
+                FOREIGN KEY (user_id) REFERENCES User(user_id)
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
             )''')
         conn.commit()
     finally:
@@ -208,14 +233,22 @@ def register():
         try:
             with conn.cursor() as cursor:
                 # Check if username already exists
+<<<<<<< HEAD
                 cursor.execute("SELECT * FROM user WHERE username = %s", (username,))
+=======
+                cursor.execute("SELECT * FROM User WHERE username = %s", (username,))
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
                 if cursor.fetchone():
                     flash('Username already exists')
                     return render_template('register.html')
                 
                 # Insert new user
                 cursor.execute("""
+<<<<<<< HEAD
                     INSERT INTO user (username, password, email, role) 
+=======
+                    INSERT INTO User (username, password, email, role) 
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
                     VALUES (%s, %s, %s, 'user')
                 """, (username, password, email))
                 conn.commit()
@@ -232,6 +265,7 @@ def register():
 @app.route('/landing')
 @login_required
 def landing():
+<<<<<<< HEAD
     product_search = request.args.get('product_search', default=None, type=str)
     sales_date = request.args.get('sales_date', default=None, type=str)
     conn = get_db_connection()
@@ -266,6 +300,9 @@ def landing():
     finally:
         conn.close()
     return render_template('landing.html', total_sales=total_sales, total_products=total_products, low_stock_items=low_stock_items, product_search_results=product_search_results)
+=======
+    return render_template('landing.html')
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -278,7 +315,11 @@ def login():
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
+<<<<<<< HEAD
                 cursor.execute("SELECT * FROM user WHERE username = %s", (username,))
+=======
+                cursor.execute("SELECT * FROM User WHERE username = %s", (username,))
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
                 user_data = cursor.fetchone()
                 
                 print(f"User data found: {user_data}")  # Debug log
@@ -306,7 +347,11 @@ def login():
 @login_required
 def logout():
     logout_user()
+<<<<<<< HEAD
     return redirect(url_for('home'))
+=======
+    return redirect(url_for('login'))
+>>>>>>> ce23e34 (Prepare for Heroku deployment)
 
 def convert_decimal_to_float(data):
     if isinstance(data, list):
