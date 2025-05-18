@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Use environment variable for secret key
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Use environment variable
 
 # Initialize Flask-Login
 login_manager = LoginManager()
