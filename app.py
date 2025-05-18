@@ -389,12 +389,7 @@ def charts():
 
             # Future Sales Volume (Forecast)
             cursor.execute("""
-                SELECT forecast_date AS month, 
-                       SUM(predicted_quantity) AS future_sales
-                FROM Forecast
-                WHERE forecast_date >= CURDATE()
-                GROUP BY forecast_date
-                ORDER BY forecast_date
+                SELECT month, SUM(predicted_quantity) as predicted_quantity FROM Forecast GROUP BY month;
             """)
             future_sales = convert_decimal_to_float(cursor.fetchall())
 
