@@ -12,9 +12,13 @@ from decimal import Decimal
 from random import randint, choice
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-here'  # Required for session management
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-here')  # Use environment variable for secret key
 
 # Initialize Flask-Login
 login_manager = LoginManager()
@@ -33,7 +37,7 @@ def load_user(user_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM User WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT * FROM user WHERE user_id = %s", (user_id,))
             user_data = cursor.fetchone()
             if user_data:
                 return User(user_data['user_id'], user_data['username'], user_data['role'])
@@ -43,10 +47,10 @@ def load_user(user_id):
 
 # Database connection configuration
 db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '',  # Make sure this matches your MySQL password
-    'db': 'att_db',  # Make sure this database exists
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'db': os.getenv('DB_NAME', 'att_db'),
     'charset': 'utf8mb4',
     'cursorclass': pymysql.cursors.DictCursor
 }
@@ -77,7 +81,7 @@ def create_tables():
                 FOREIGN KEY (location_id) REFERENCES Location(location_id)
             )''')
             # User table
-            cursor.execute('''CREATE TABLE IF NOT EXISTS User (
+            cursor.execute('''CREATE TABLE IF NOT EXISTS user (
                 user_id INT AUTO_INCREMENT PRIMARY KEY,
                 full_name VARCHAR(50),
                 username VARCHAR(10),
@@ -182,7 +186,7 @@ def create_tables():
                 user_id INT,
                 action VARCHAR(100),
                 time_stamp DATETIME,
-                FOREIGN KEY (user_id) REFERENCES User(user_id)
+                FOREIGN KEY (user_id) REFERENCES user(user_id)
             )''')
         conn.commit()
     finally:
@@ -203,14 +207,14 @@ def register():
         try:
             with conn.cursor() as cursor:
                 # Check if username already exists
-                cursor.execute("SELECT * FROM User WHERE username = %s", (username,))
+                cursor.execute("SELECT * FROM user WHERE username = %s", (username,))
                 if cursor.fetchone():
                     flash('Username already exists')
                     return render_template('register.html')
                 
                 # Insert new user
                 cursor.execute("""
-                    INSERT INTO User (username, password, email, role) 
+                    INSERT INTO user (username, password, email, role) 
                     VALUES (%s, %s, %s, 'user')
                 """, (username, password, email))
                 conn.commit()
@@ -227,7 +231,40 @@ def register():
 @app.route('/landing')
 @login_required
 def landing():
-    return render_template('landing.html')
+    product_search = request.args.get('product_search', default=None, type=str)
+    sales_date = request.args.get('sales_date', default=None, type=str)
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Total Sales (with optional date filter)
+            if sales_date:
+                cursor.execute('SELECT SUM(total_amount) AS total_sales FROM Sales WHERE sale_date = %s', (sales_date,))
+            else:
+                cursor.execute('SELECT SUM(total_amount) AS total_sales FROM Sales')
+            total_sales = cursor.fetchone()['total_sales'] or 0
+            # Total Products (with optional search filter)
+            if product_search:
+                cursor.execute('SELECT COUNT(*) AS total_products FROM Product WHERE product_name LIKE %s', (f"%{product_search}%",))
+            else:
+                cursor.execute('SELECT COUNT(*) AS total_products FROM Product')
+            total_products = cursor.fetchone()['total_products'] or 0
+            # Low Stock Items (stock_status = 'Low Stock')
+            cursor.execute("SELECT COUNT(*) AS low_stock_items FROM Inventory WHERE stock_status = 'Low Stock'")
+            low_stock_items = cursor.fetchone()['low_stock_items'] or 0
+            product_search_results = []
+            if product_search:
+                cursor.execute('SELECT product_id, product_name FROM Product WHERE product_name LIKE %s', (f"%{product_search}%",))
+                products = cursor.fetchall()
+                for prod in products:
+                    cursor.execute('SELECT quantity, stock_status FROM Inventory WHERE product_id = %s ORDER BY inventory_id DESC LIMIT 1', (prod['product_id'],))
+                    inv = cursor.fetchone()
+                    if inv:
+                        product_search_results.append({'product_name': prod['product_name'], 'quantity': inv['quantity'], 'stock_status': inv['stock_status']})
+                    else:
+                        product_search_results.append({'product_name': prod['product_name'], 'quantity': 'N/A', 'stock_status': 'No Inventory'})
+    finally:
+        conn.close()
+    return render_template('landing.html', total_sales=total_sales, total_products=total_products, low_stock_items=low_stock_items, product_search_results=product_search_results)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -240,7 +277,7 @@ def login():
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT * FROM User WHERE username = %s", (username,))
+                cursor.execute("SELECT * FROM user WHERE username = %s", (username,))
                 user_data = cursor.fetchone()
                 
                 print(f"User data found: {user_data}")  # Debug log
@@ -268,7 +305,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect(url_for('home'))
 
 def convert_decimal_to_float(data):
     if isinstance(data, list):
